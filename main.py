@@ -32,6 +32,13 @@ def png_size(data):
     return width, height
 
 
+def png_is_whole(data):
+    """True if the PNG ends with a proper IEND chunk (not truncated)."""
+    if len(data) < 12 or data[-12:-8] != b"\x00\x00\x00\x00":
+        return False
+    return data[-8:-4] == b"IEND" and data[-4:] == b"\xaeB`\x82"
+
+
 def main():
     encoded = PAYLOAD.read_text().strip()
     assert "\n" not in encoded and " " not in encoded, "entry.b64 must be one line"
@@ -39,6 +46,7 @@ def main():
     assert len(data) <= 1_048_576, f"image too large: {len(data)} bytes"
     dims = png_size(data)
     assert dims == (1024, 1024), f"expected 1024x1024 PNG, got {dims}"
+    assert png_is_whole(data), "PNG is truncated: no IEND chunk"
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = TARGET.with_name(".entry.png.tmp")
     tmp.write_bytes(data)
